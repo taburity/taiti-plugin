@@ -2,6 +2,7 @@ package br.edu.ufape.taiti.actions;
 
 
 import br.edu.ufape.taiti.gui.taskbar.TaskBarGUI;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
@@ -22,7 +23,7 @@ public class TaskBarAction implements ToolWindowFactory {
         String classpath = System.getProperty("java.class.path");
         TaskBarGUI taskBarGUI = new TaskBarGUI(toolWindow, project);
 
-        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+        ContentFactory contentFactory = ApplicationManager.getApplication().getService(ContentFactory.class);;
         Content content = contentFactory.createContent(taskBarGUI.getContent(), "", false);
         toolWindow.getContentManager().addContent(content);
 

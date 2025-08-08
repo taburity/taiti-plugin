@@ -2,6 +2,7 @@ package br.edu.ufape.taiti.actions;
 
 import br.edu.ufape.taiti.gui.conflicts.ConflictsGUI;
 import br.edu.ufape.taiti.gui.conflicts.ConflictsTable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
@@ -17,7 +18,7 @@ public class ConflictsAction implements ToolWindowFactory {
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
 
         ConflictsGUI conflictsGUI = new ConflictsGUI(toolWindow, project);
-        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+        ContentFactory contentFactory = ApplicationManager.getApplication().getService(ContentFactory.class);
         Content content = contentFactory.createContent(conflictsGUI.getContent(), "", false);
         toolWindow.getContentManager().addContent(content);
     }

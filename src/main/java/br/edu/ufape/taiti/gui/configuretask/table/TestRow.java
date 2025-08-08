@@ -7,10 +7,17 @@ public class TestRow {
     private Boolean checkbox;
     private String test;
 
-    public TestRow(File file, Boolean checkbox, String test) {
+    private final int lineNumber;
+
+    public TestRow(File file, Boolean checkbox, String test, int lineNumber) {
         this.file = file;
         this.checkbox = checkbox;
         this.test = test;
+        this.lineNumber = lineNumber;
+    }
+
+    public int getLineNumber() {
+        return lineNumber;
     }
 
     public File getFile() {

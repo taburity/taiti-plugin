@@ -4,10 +4,24 @@ TAITIr é uma ferramenta para predizer os arquivos que um desenvolvedor precisar
 Ela se aplica à projetos Rails que adotam a dinâmica de [BDD (Behavior Driven Development)](https://pt.wikipedia.org/wiki/Behavior_Driven_Development) com o [Cucumber](https://cucumber.io/) para a escrita de testes de aceitação automatizados e o [PivotalTracker](https://www.pivotaltracker.com/) para gerenciamento de tarefas do projeto.
 TAITIr foi desenvolvida como um plugin para a IDE RubyMine da JetBrains, também compatível com o IntelliJ Ultimate (com o plugin para Ruby).
 
+## Requisitos
+
+Para o funcionamento do plugin TAITIr, são necessárias as seguintes ferramentas e versões:
+
+* **Ferramentas Necessárias:**
+    - JDK 17
+    - Ruby 3.3.5
+    - Gems necessárias:
+        - `gem install i18n -v 0.7.0`
+        - `gem install activesupport-inflector -v 0.1.0`
+        - `gem install parser -v 2.3.1.4`
+        - `gem install ast -v 2.3.0`
+
 ## Instalação
 
-* Instalar o [RubyMine](https://www.jetbrains.com/pt-br/ruby/) ou o [IntelliJ Ultimate](https://www.jetbrains.com/pt-br/idea/);
-* Baixar o arquivo <em>.zip</em> do plugin disponível nas [releases do GitHub](https://github.com/vngabriel/taiti-plugin/releases/download/v0.1/taiti-plugin-0.1.zip);
+* Instalar o [RubyMine](https://www.jetbrains.com/pt-br/ruby/download/other.html) ou o [IntelliJ](https://www.jetbrains.com/idea/download/other.html);
+    - Ultima versão suportada pelo plugin é a 2023.1.7;
+* Baixar o arquivo <em>.zip</em> do plugin disponível nas [releases do GitHub](https://github.com/alexlsilva7/taiti-plugin/releases/download/1.0/taiti-plugin-1.0-SNAPSHOT.zip);
 * Abrir a IDE e, conforme ilustrado pela Figura 1, ir em File > Settings/Preferences > Plugins, clicar na engrenagem superior ao lado da aba <em>Installed</em>, selecionar a opção <em>Install Plugin from Disk</em>, selecionar o arquivo <em>.zip</em> do plugin e clicar em OK.
 
 <figure>
@@ -85,4 +99,4 @@ Uma vez finalizada a seleção dos testes relacionados à tarefa, basta clicar e
 
 ## Autores
 
-Esse projeto foi desenvolvido pelo discente Mágno Gomes, sob orientação da docente Thaís Burity e participação do discente Gabriel Viana e do docente Rodrigo Cardoso, na Universidade Federal do Agreste de Pernambuco.
+Esse projeto foi desenvolvido pelo discente Mágno Gomes, sob orientação da docente Thaís Burity, com a participação do discente Gabriel Viana e do docente Rodrigo Cardoso, na Universidade Federal do Agreste de Pernambuco. Refatoração e correção da interface de usuário realizada por Alex Lopes.

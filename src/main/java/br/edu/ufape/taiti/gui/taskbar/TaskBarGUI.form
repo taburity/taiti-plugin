@@ -35,34 +35,9 @@
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="8f0f9" class="javax.swing.JButton" binding="addButton" default-binding="true">
-            <constraints>
-              <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="7" hsize-policy="1" anchor="8" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="81" height="30"/>
-                <maximum-size width="30" height="-1"/>
-              </grid>
-              <gridbag weightx="0.0" weighty="1.0"/>
-            </constraints>
-            <properties>
-              <alignmentY value="0.0"/>
-              <enabled value="true"/>
-              <focusCycleRoot value="false"/>
-              <hideActionText value="false"/>
-              <horizontalAlignment value="0"/>
-              <horizontalTextPosition value="0"/>
-              <icon value="icons8-plus-math-24.png"/>
-              <iconTextGap value="0"/>
-              <inheritsPopupMenu value="false"/>
-              <maximumSize width="30" height="30"/>
-              <minimumSize width="-1" height="-1"/>
-              <preferredSize width="30" height="30"/>
-              <text value=""/>
-              <toolTipText value="Add Scenarios to task"/>
-            </properties>
-          </component>
           <component id="ebea" class="javax.swing.JButton" binding="refreshButton" default-binding="true">
             <constraints>
-              <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="1" anchor="8" fill="0" indent="0" use-parent-layout="false">
+              <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="1" anchor="8" fill="0" indent="0" use-parent-layout="false">
                 <preferred-size width="30" height="-1"/>
                 <maximum-size width="30" height="-1"/>
               </grid>

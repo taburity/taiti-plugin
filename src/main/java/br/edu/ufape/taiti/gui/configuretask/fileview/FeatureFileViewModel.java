@@ -22,6 +22,14 @@ public class FeatureFileViewModel extends AbstractTableModel {
         this.scenarios = scenarios;
         this.tableModel = tableModel;
         columns = new String[]{"", this.file.getName()};
+
+        for (FileLine fl : rows) {
+            int ln = fl.getLineNumber();
+            // Se scenarios já contém (file, ln), marca
+            if (scenarios.contains(new ScenarioTestInformation(this.file.getPath(), ln))) {
+                fl.setCheckbox(true);
+            }
+        }
     }
 
     @Override
@@ -56,11 +64,11 @@ public class FeatureFileViewModel extends AbstractTableModel {
             if (!fileLine.getCheckbox()) {
                 fileLine.setCheckbox(true);
                 scenarios.add(new ScenarioTestInformation(this.file.getPath(), fileLine.getLineNumber()));
-                tableModel.addRow(new TestRow(file, false, line));
+                tableModel.addRow(new TestRow(file, false, line, fileLine.getLineNumber()));
             } else {
                 fileLine.setCheckbox(false);
                 scenarios.remove(new ScenarioTestInformation(this.file.getPath(), fileLine.getLineNumber()));
-                tableModel.removeRow(new TestRow(file, false, line));
+                tableModel.removeRow(new TestRow(file, false, line, fileLine.getLineNumber()));
             }
 
         } else if (columnIndex == 0 && rowIndex == 0 && line.equals(file.getName())) {
@@ -83,6 +91,9 @@ public class FeatureFileViewModel extends AbstractTableModel {
         }
 
         fireTableCellUpdated(rowIndex, columnIndex);
+    }
+    public FileLine getFileLineAt(int rowIndex) {
+        return rows.get(rowIndex);
     }
 
     @Override

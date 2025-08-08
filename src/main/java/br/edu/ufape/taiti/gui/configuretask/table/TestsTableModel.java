@@ -32,7 +32,16 @@ public class TestsTableModel extends AbstractTableModel {
                 value = testRow.getCheckbox();
                 break;
             case 1:
-                value = testRow.getTest();
+                if(rowIndex == 0) {
+                    value = testRow.getTest();
+                    break;
+                }
+                String fileName = testRow.getFile() != null ? testRow.getFile().getName() : "";
+                String scenarioName = testRow.getTest();
+                if (scenarioName.startsWith("Scenario: ")) {
+                    scenarioName = scenarioName.substring(10);
+                }
+                value = fileName + "|" + scenarioName;
                 break;
         }
 

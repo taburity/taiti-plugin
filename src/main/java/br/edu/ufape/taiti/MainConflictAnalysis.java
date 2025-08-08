@@ -30,7 +30,7 @@ public class MainConflictAnalysis {
             task1 = new TodoTask(url, id1, tests);
             plannedTask1 = task1.generateTaskForConflictAnalysis();
 
-            Set<String> files = plannedTask1.getItest().findAllFiles();
+            Set<String> files = plannedTask1.getItest().getFiles();
             System.out.printf("TestI(%d): %d%n", id1, files.size());
 
             List<String[]> content = new ArrayList<>();
@@ -60,7 +60,7 @@ public class MainConflictAnalysis {
             task2 = new TodoTask(url, id2, tests);
             plannedTask2 = task2.generateTaskForConflictAnalysis();
 
-            Set<String> files = plannedTask2.getItest().findAllFiles();
+            Set<String> files = plannedTask2.getItest().getFiles();
             System.out.printf("TestI(%d): %d%n", id2, files.size());
 
             List<String[]> content = new ArrayList<>();
@@ -102,7 +102,7 @@ public class MainConflictAnalysis {
             task3 = new TodoTask(url, id3, tests);
             plannedTask3 = task3.generateTaskForConflictAnalysis();
 
-            Set<String> files = plannedTask3.getItest().findAllFiles();
+            Set<String> files = plannedTask3.getItest().getFiles();
             System.out.printf("TestI(%d): %d%n", id3, files.size());
 
             List<String[]> content = new ArrayList<>();

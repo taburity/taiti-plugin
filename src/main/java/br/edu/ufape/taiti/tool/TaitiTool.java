@@ -50,7 +50,10 @@ public class TaitiTool {
                 itest = task.computeTestBasedInterface();
 
                 /* Exibindo o conjunto de arquivos no console */
-                Set<String> files = itest.findAllFiles();
+                Set<String> files = itest.getFiles();
+                Set<String> files2 = itest.getAllProdFiles();
+                Set<String> files3 = itest.findFilteredFiles();
+
                 System.out.printf("TestI(%d): %d%n", taskID, files.size());
                 for (String file : files) {
                     System.out.println(file);
@@ -206,8 +209,12 @@ public class TaitiTool {
         if (projectDir != null) {
             projectName = projectDir.getName();
         }
-
-        return absolutePath.substring(absolutePath.indexOf(projectName)).replace(projectName + File.separator, "");
+        if(absolutePath.contains(projectName)){
+            return absolutePath.substring(absolutePath.indexOf(projectName)).replace(projectName + File.separator, "");
+        }else if(absolutePath.contains("bin")){
+            return absolutePath.substring(absolutePath.indexOf("bin") + 4);
+        }
+        return absolutePath;
     }
 
     private String getProjectPath() {

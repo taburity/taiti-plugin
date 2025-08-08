@@ -48,22 +48,33 @@ public class TaitiTree extends Tree {
         addParentsNodeToTree(parentsNodes, parentNode, index - 1);
     }
 
-    public void addNodesToTree(String path, DefaultMutableTreeNode node) {
-        File root = new File(path);
-        File[] listFiles = root.listFiles();
+    public boolean addNodesToTree(File currentDir, DefaultMutableTreeNode parentNode) {
+        File[] listFiles = currentDir.listFiles();
+        boolean hasValidChildren = false;
 
-        if (listFiles == null) return;
+        if (listFiles == null) return false;
 
         for (File file : listFiles) {
             if (file.isDirectory()) {
-                DefaultMutableTreeNode newNode = new DefaultMutableTreeNode(file.getName());
-                node.add(newNode);
-                addNodesToTree(file.getAbsolutePath(), newNode);
-            } else if (file.isFile()) {
-                DefaultMutableTreeNode newNode = new DefaultMutableTreeNode(new TaitiTreeFileNode(file), false);
-                node.add(newNode);
+                DefaultMutableTreeNode childNode = new DefaultMutableTreeNode(file.getName());
+                boolean childHasContent = addNodesToTree(file, childNode);
+
+                if (childHasContent) {
+                    parentNode.add(childNode);
+                    hasValidChildren = true;
+                }
+            } else if (isFeatureFile(file)) {
+                parentNode.add(new DefaultMutableTreeNode(new TaitiTreeFileNode(file), false));
+                hasValidChildren = true;
             }
         }
+
+        return hasValidChildren;
+    }
+
+    private boolean isFeatureFile(File file) {
+        String fileName = file.getName().toLowerCase();
+        return fileName.endsWith(".feature");
     }
 
 }
