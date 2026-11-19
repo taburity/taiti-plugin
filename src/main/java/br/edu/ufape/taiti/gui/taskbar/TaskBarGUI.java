@@ -1,6 +1,5 @@
 package br.edu.ufape.taiti.gui.taskbar;
 
-import br.edu.ufape.taiti.exceptions.HttpException; // May need to adapt or replace with TrelloApiException
 import br.edu.ufape.taiti.gui.TaitiDialog;
 import br.edu.ufape.taiti.gui.conflicts.ConflictsGUI;
 import br.edu.ufape.taiti.service.TrelloService; // Changed from PivotalTracker
@@ -8,11 +7,9 @@ import br.edu.ufape.taiti.service.Stories;      // This class will need adaptati
 import br.edu.ufape.taiti.service.Task;         // This class will need adaptation for Trello
 import br.edu.ufape.taiti.settings.TaitiSettingsState;
 import br.ufpe.cin.tan.conflict.ConflictAnalyzer;
+import br.ufpe.cin.tan.conflict.PairConflictResult;
 import br.ufpe.cin.tan.conflict.PlannedTask; // This might relate to how Tasks are structured
 
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
@@ -25,16 +22,17 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.Set;
+import java.util.LinkedHashSet;
 import java.util.regex.Pattern;
 
 
@@ -50,9 +48,24 @@ public class TaskBarGUI {
     private JTable unstartedTable;
     private JTable startedTable;
     private JPanel tables;
+    private JButton filterButton;
+    private JTextArea selectATaskToTextArea;
+    private JButton button1;
+    private JPanel taskDetailsPanel;
+    private JButton button2;
+    private JPanel LinkedTests;
+    private JPanel RiskDetails;
+    private JLabel IdTask;
+    private JPanel PanelRisk;
+    private JPanel ImpactedFiles;
     private JPanel content; // The root panel that switches between loading, config, and TaskBar
     private JPanel configPanel; // Panel shown when settings are missing/invalid
     private JLabel messageLabel; // Label within configPanel to show error messages
+
+    private RiskDetailsPanel riskDetailsPanel; // New: panel that shows the conflict risk details (no-test / risk states)
+    private LinkedTestsPanel linkedTestsPanel; // New: panel that shows the linked tests summary (no-tests / with-tests states)
+    private ImpactedFilesPanel impactedFilesPanel; // New: panel that shows the impacted files prediction (empty / with-files states)
+    private Task currentSelectedTask; // Task currently shown in taskDetailsPanel, used by the "Gerenciar testes" button
 
     private ArrayList<Task> myUnstartedTasksList; // Changed from Stories to Tasks for clarity
     private ArrayList<Task> otherPendingTasksList; // Pending = started + unstarted
@@ -227,30 +240,103 @@ public class TaskBarGUI {
             TaskBar.setName("TaskBar"); // For debugging changeJpanel
         }
 
-
         addPlaceHolderStyle(txtSearch);
-        myUnstartedTasksList = new ArrayList<>();
-        otherPendingTasksList = new ArrayList<>();
 
-        modelo1 = new DefaultTableModel(null, new String[]{"<html><b>My unstarted tasks</b></html>", "<html><b>Conflict Rate</b></html>"}) {
+        // NOTE: myUnstartedTasksList and otherPendingTasksList are intentionally NOT
+        // re-initialized here. They are created once in the constructor and cleared
+        // selectively by limparTaskListsInModels(). Re-creating them here would wipe
+        // data that background tasks may have already populated before this method
+        // is called by ensureUIComponentsInitialized().
+        if (myUnstartedTasksList == null) myUnstartedTasksList = new ArrayList<>();
+        if (otherPendingTasksList == null) otherPendingTasksList = new ArrayList<>();
+
+        // Wire up the RiskDetailsPanel inside the PanelRisk container created by the UI designer.
+        initializeRiskDetailsPanel();
+        // Wire up the LinkedTestsPanel inside the LinkedTests container created by the UI designer.
+        initializeLinkedTestsPanel();
+        // Wire up the ImpactedFilesPanel inside the ImpactedFiles container created by the UI designer.
+        initializeImpactedFilesPanel();
+
+        modelo1 = new DefaultTableModel(
+                null,
+                new String[]{
+                        "<html><b>Priority</b></html>",
+                        "<html><b>Tasks</b></html>",
+                        "<html><b>Risk of conflict</b></html>"
+                }) {
+
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
+
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (columnIndex == 2) {
+                    return Double.class;
+                }
+                return String.class;
+            }
         };
         unstartedTable.setModel(modelo1);
-        unstartedTable.getColumnModel().getColumn(1).setMaxWidth(100);
+        unstartedTable.getColumnModel()
+                .getColumn(0)
+                .setMaxWidth(50);
+        unstartedTable.getColumnModel()
+                .getColumn(0)
+                .setCellRenderer(new PriorityRenderer());
+
+        unstartedTable.getColumnModel()
+                .getColumn(1)
+                .setMinWidth(120);
+        unstartedTable.getColumnModel()
+                .getColumn(1)
+                .setMaxWidth(160);
+
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        unstartedTable.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
+        unstartedTable.getColumnModel()
+                .getColumn(1)
+                .setCellRenderer(centerRenderer);
 
-        modelo2 = new DefaultTableModel(null, new String[]{"<html><b>Potential conflict-inducing tasks</b></html>"}) {
+        unstartedTable.getColumnModel()
+                .getColumn(2)
+                .setCellRenderer(new ConflictRiskRenderer());
+
+        unstartedTable.setRowHeight(35);
+        modelo2 = new DefaultTableModel(null, new String[]{
+                "<html><b>Priority</b></html>",
+                "<html><b>Task</b></html>",
+                "<html><b>Responsible</b></html>"
+        }) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
         startedTable.setModel(modelo2);
+        startedTable.setRowHeight(35);
+
+        startedTable.getColumnModel()
+                .getColumn(0)
+                .setMaxWidth(50);
+        startedTable.getColumnModel()
+                .getColumn(0)
+                .setCellRenderer(new PriorityRenderer());
+
+        DefaultTableCellRenderer startedCenterRenderer = new DefaultTableCellRenderer();
+        startedCenterRenderer.setHorizontalAlignment(JLabel.CENTER);
+        startedTable.getColumnModel()
+                .getColumn(1)
+                .setCellRenderer(startedCenterRenderer);
+
+        startedTable.getColumnModel()
+                .getColumn(1)
+                .setMinWidth(120);
+
+        startedTable.getColumnModel()
+                .getColumn(2)
+                .setMinWidth(100);
 
         refreshButton.addActionListener(e -> {
             changeJpanel(loading);
@@ -286,8 +372,99 @@ public class TaskBarGUI {
             }
         });
 
+        taskDetailsPanel.setVisible(false);
+
+        unstartedTable.getSelectionModel().addListSelectionListener(e -> {
+
+            if (e.getValueIsAdjusting()) {
+                return;
+            }
+
+            int selectedRow = unstartedTable.getSelectedRow();
+
+            if (selectedRow == -1) {
+                taskDetailsPanel.setVisible(false);
+                if (TaskBar != null) {
+                    TaskBar.revalidate();
+                    TaskBar.repaint();
+                }
+                return;
+            }
+
+            int modelRow =
+                    unstartedTable.convertRowIndexToModel(selectedRow);
+
+            if (modelRow >= 0 &&
+                    modelRow < myUnstartedTasksList.size()) {
+
+                Task selectedTask =
+                        myUnstartedTasksList.get(modelRow);
+
+                showTaskDetails(selectedTask);
+            }
+        });
+
         // Tooltips and Mouse Listeners (adapted for 'Task' object)
         configureTableMouseListeners();
+    }
+
+    /**
+     * Creates the RiskDetailsPanel and attaches it inside the PanelRisk
+     * container declared in the UI form (the empty panel you placed
+     * inside RiskDetails, alongside the IdTask label).
+     */
+    private void initializeRiskDetailsPanel() {
+        if (PanelRisk == null) {
+            System.err.println("WARNING: PanelRisk is null. RiskDetailsPanel will not be attached.");
+            return;
+        }
+        riskDetailsPanel = new RiskDetailsPanel();
+        PanelRisk.setLayout(new BorderLayout());
+        PanelRisk.removeAll();
+        PanelRisk.add(riskDetailsPanel, BorderLayout.CENTER);
+        PanelRisk.revalidate();
+        PanelRisk.repaint();
+    }
+
+    /**
+     * Creates the LinkedTestsPanel and attaches it inside the LinkedTests
+     * container declared in the UI form. Also wires the "Gerenciar testes"
+     * button to open the TaitiDialog for the currently selected task.
+     */
+    private void initializeLinkedTestsPanel() {
+        if (LinkedTests == null) {
+            System.err.println("WARNING: LinkedTests is null. LinkedTestsPanel will not be attached.");
+            return;
+        }
+        linkedTestsPanel = new LinkedTestsPanel();
+        linkedTestsPanel.setOnManageTestsClicked(() -> {
+            if (currentSelectedTask != null) {
+                TaitiDialog taitiDialog = new TaitiDialog(project, TaskBarGUI.this, currentSelectedTask);
+                taitiDialog.show();
+            }
+        });
+        LinkedTests.setLayout(new BorderLayout());
+        LinkedTests.removeAll();
+        LinkedTests.add(linkedTestsPanel, BorderLayout.CENTER);
+        LinkedTests.revalidate();
+        LinkedTests.repaint();
+    }
+
+    /**
+     * Creates the ImpactedFilesPanel and attaches it inside the
+     * ImpactedFiles container declared in the UI form.
+     */
+    private void initializeImpactedFilesPanel() {
+        if (ImpactedFiles == null) {
+            System.err.println("WARNING: ImpactedFiles is null. ImpactedFilesPanel will not be attached.");
+            return;
+        }
+        impactedFilesPanel = new ImpactedFilesPanel();
+        ImpactedFiles.setLayout(new BorderLayout());
+        ImpactedFiles.removeAll();
+        ImpactedFiles.add(impactedFilesPanel, BorderLayout.CENTER);
+        ImpactedFiles.revalidate();
+        ImpactedFiles.repaint();
     }
 
     private void filterTable(JTable table, DefaultTableModel model, String searchText) {
@@ -306,10 +483,18 @@ public class TaskBarGUI {
             @Override
             public void mouseMoved(MouseEvent e) {
                 int row = unstartedTable.rowAtPoint(e.getPoint());
+                int column = unstartedTable.columnAtPoint(e.getPoint());
                 if (row > -1) {
                     int modelRow = unstartedTable.convertRowIndexToModel(row); // Important for sorted tables
                     if (modelRow < myUnstartedTasksList.size()) {
                         Task task = myUnstartedTasksList.get(modelRow);
+
+                        if (column == 0) {
+                            String priority = task.getPriority();
+                            unstartedTable.setToolTipText(priority);
+                            return;
+                        }
+
                         String tooltip = "<html>Task Name: " + task.getName() + "<br>Owner: " + task.getPersonName();
                         if (task.hasScenarios()) {
                             tooltip += "<br>Conflict Rate: " + task.getConflictRate() + "%";
@@ -345,6 +530,27 @@ public class TaskBarGUI {
 
         unstartedTable.addMouseListener(new MouseAdapter() {
             @Override
+            public void mousePressed(MouseEvent e) {
+
+                int row = unstartedTable.rowAtPoint(e.getPoint());
+
+                if (row == -1) {
+
+                    unstartedTable.clearSelection();
+
+                    taskDetailsPanel.setVisible(false);
+                    if (TaskBar != null) {
+                        TaskBar.revalidate();
+                        TaskBar.repaint();
+                    }
+                }
+
+                if (e.isPopupTrigger()) {
+                    showPopup(e);
+                }
+            }
+
+            @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     int viewRow = unstartedTable.getSelectedRow();
@@ -369,10 +575,10 @@ public class TaskBarGUI {
                 }
             }
 
-            @Override
-            public void mousePressed(MouseEvent e) {
-                if (e.isPopupTrigger()) showPopup(e);
-            }
+//            @Override
+//            public void mousePressed(MouseEvent e) {
+//                if (e.isPopupTrigger()) showPopup(e);
+//            }
 
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -503,6 +709,13 @@ public class TaskBarGUI {
                         }
                     }
                     for (Task myUnstartedTask : trelloStories.getMyUnstartedTasks()) {
+                        // IMPORTANT: checkConflictRisk() also overwrites this.conflictRate internally
+                        // (using its own task-count-based formula). Call it FIRST, only to populate
+                        // getConflictScenarios()/getConflictTasks() (used by ImpactedFilesPanel), then
+                        // overwrite conflictRate below with the conflictAnalyzer-based value, which is
+                        // the one actually used for the risk badge/percentage shown to the user.
+                        myUnstartedTask.checkConflictRisk(trelloStories.getOtherPendingTasks());
+
                         if (myUnstartedTask.getiTesk() != null) {
                             double conflictRate = conflictAnalyzer.meanRelativeConflictRiskForTasks(myUnstartedTask.getiTesk(), othersPlannedTaskArrayList);
                             double formattedConflictRate = Math.round(conflictRate * 100.0);
@@ -515,7 +728,7 @@ public class TaskBarGUI {
                     // Combine "My Unstarted" and "No Scenario" tasks if that's the desired logic
                     List<Task> myCombinedUnstartedTasks = new ArrayList<>(trelloStories.getMyUnstartedTasks());
                     // myCombinedUnstartedTasks.addAll(trelloStories.getNoScenarioTasks()); // If getNoScenarioTasks is still relevant
-
+                    myCombinedUnstartedTasks.addAll(trelloStories.getNoScenarioTasks());
                     updateMyUnstartedTasksListInModel(myCombinedUnstartedTasks, myUnstartedTasksList, modelo1);
                     updateOtherPendingTasksListInModel(trelloStories.getOtherPendingTasks(), otherPendingTasksList, modelo2);
 
@@ -592,18 +805,21 @@ public class TaskBarGUI {
 
     // Renamed and adapted for Task objects
     private void updateMyUnstartedTasksListInModel(List<Task> tasks, ArrayList<Task> internalList, DefaultTableModel model) {
+        System.out.println("updateMyUnstartedTasksListInModel" + tasks);
         internalList.clear(); // Clear before adding new ones
         for (Task task : tasks) {
             internalList.add(task);
             String taskName = truncateTaskName(task.getName()); // Assuming Task has getName()
-            String conflictRateStr;
+            String taskPriority = truncateTaskName(task.getPriority());
+            double conflictRate = task.hasScenarios()
+                    ? task.getConflictRate()
+                    : -1;
 
-            if (task.hasScenarios()) { // Assuming Task has hasScenarios()
-                conflictRateStr = task.getConflictRate() > 0 ? task.getConflictRate() + "%" : "0%";
-            } else {
-                conflictRateStr = "Add tests";
-            }
-            model.addRow(new Object[]{taskName, conflictRateStr});
+            model.addRow(new Object[]{
+                    taskPriority,
+                    taskName,
+                    conflictRate
+            });
         }
     }
 
@@ -612,8 +828,10 @@ public class TaskBarGUI {
         internalList.clear(); // Clear before adding new ones
         for (Task task : tasks) {
             internalList.add(task);
+            String taskPriority = truncateTaskName(task.getPriority());
             String taskName = truncateTaskName(task.getName());
-            model.addRow(new Object[]{taskName});
+            String personName = task.getPersonName() != null ? task.getPersonName() : "";
+            model.addRow(new Object[]{taskPriority, taskName, personName});
         }
     }
 
@@ -684,5 +902,127 @@ public class TaskBarGUI {
             System.err.println("ERROR in safeFireTableDataChanged(): " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Calcula a previsão de arquivos impactados para a task selecionada,
+     * comparando-a (via ConflictAnalyzer.computeConflictRiskForPair) com
+     * cada uma das outras tasks em andamento que também possuem um
+     * PlannedTask (iTesk) calculado.
+     *
+     * Para cada outra task, pega a interseção de arquivos de produção
+     * (PairConflictResult.getConflictingFiles()) e agrupa por arquivo,
+     * guardando quais tasks conflitantes tocam aquele arquivo (para
+     * desenhar os pontinhos de risco "Relacionado a").
+     */
+    private List<ImpactedFilesPanel.ImpactedFile> buildImpactedFiles(Task task, List<Task> otherTasks) {
+        List<ImpactedFilesPanel.ImpactedFile> result = new ArrayList<>();
+
+        if (task == null || task.getiTesk() == null || otherTasks == null) {
+            return result;
+        }
+
+        // path -> tasks conflitantes relacionadas a esse arquivo (sem repetir)
+        LinkedHashMap<String, List<Task>> tasksByFile = new LinkedHashMap<>();
+        LinkedHashMap<String, Set<String>> seenTaskIdsByFile = new LinkedHashMap<>();
+
+        for (Task otherTask : otherTasks) {
+            if (otherTask == task || otherTask.getiTesk() == null) continue;
+
+            try {
+                Object rawResult = conflictAnalyzer.computeConflictRiskForPair(task.getiTesk(), otherTask.getiTesk());
+                if (!(rawResult instanceof PairConflictResult)) continue;
+
+                PairConflictResult pairResult = (PairConflictResult) rawResult;
+                Collection<String> conflictingFiles = pairResult.getConflictingFiles();
+                if (conflictingFiles == null) continue;
+
+                for (String filePath : conflictingFiles) {
+                    Set<String> seenIds = seenTaskIdsByFile.computeIfAbsent(filePath, k -> new LinkedHashSet<>());
+                    if (seenIds.add(otherTask.getId())) {
+                        tasksByFile.computeIfAbsent(filePath, k -> new ArrayList<>()).add(otherTask);
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("WARNING: Failed to compute conflict risk pair for impacted files: " + e.getMessage());
+            }
+        }
+
+        for (Map.Entry<String, List<Task>> entry : tasksByFile.entrySet()) {
+            result.add(new ImpactedFilesPanel.ImpactedFile(entry.getKey(), entry.getValue()));
+        }
+
+        return result;
+    }
+
+    private void showTaskDetails(Task task) {
+
+        taskDetailsPanel.setVisible(true);
+        currentSelectedTask = task;
+
+        // Header: Trello card ID + task title (e.g. "#123456789  Login com e-mail")
+        if (IdTask != null) {
+            String taskId = task.getId() != null ? String.valueOf(task.getId()) : "";
+            String taskName = task.getName() != null ? task.getName() : "";
+            IdTask.setText("<html><span style='color:#ff5c5c;'>#" + taskId
+                    + "</span><br><b>" + taskName + "</b></html>");
+        }
+
+        if (riskDetailsPanel == null) {
+            // Defensive fallback in case PanelRisk wasn't wired up correctly.
+            initializeRiskDetailsPanel();
+        }
+
+        if (linkedTestsPanel == null) {
+            // Defensive fallback in case LinkedTests wasn't wired up correctly.
+            initializeLinkedTestsPanel();
+        }
+
+        if (impactedFilesPanel == null) {
+            // Defensive fallback in case ImpactedFiles wasn't wired up correctly.
+            initializeImpactedFilesPanel();
+        }
+
+        if (task.hasScenarios()) {
+
+            if (riskDetailsPanel != null) {
+                riskDetailsPanel.showRisk(task.getConflictRate());
+            }
+
+            if (linkedTestsPanel != null) {
+                linkedTestsPanel.showTests(task.getScenarios());
+            }
+
+            if (impactedFilesPanel != null) {
+                impactedFilesPanel.showImpactedFiles(buildImpactedFiles(task, otherPendingTasksList));
+            }
+
+        } else {
+
+            if (riskDetailsPanel != null) {
+                riskDetailsPanel.showNoTest();
+            }
+
+            if (linkedTestsPanel != null) {
+                linkedTestsPanel.showNoTests();
+            }
+
+            if (impactedFilesPanel != null) {
+                impactedFilesPanel.showEmpty();
+            }
+        }
+
+        if (taskDetailsPanel != null) {
+            taskDetailsPanel.revalidate();
+            taskDetailsPanel.repaint();
+        }
+        if (TaskBar != null) {
+            TaskBar.revalidate();
+            TaskBar.repaint();
+        }
+    }
+
+    private void createUIComponents() {
+        // TODO: place custom component creation code here
     }
 }

@@ -24,6 +24,7 @@ public class Task {
     private final String id; // Trello card ID (string)
     private final String url;
     private final String description; // Trello card description
+    private final String priority; // Trello card description
     private final String idList;      // ID of the Trello list the card belongs to
     private final List<String> memberIds; // List of member IDs assigned to the card
     private final List<String> labelNames; // List of label names on the card
@@ -54,6 +55,7 @@ public class Task {
         this.name = cardJson.getString("name");
         this.url = cardJson.getString("url");
         this.description = cardJson.optString("desc", "");
+        this.priority = extractPriority(cardJson);
         this.idList = cardJson.getString("idList");
 
         this.memberIds = new ArrayList<>();
@@ -249,6 +251,31 @@ public class Task {
 
     }
 
+    private String extractPriority(JSONObject cardJson) {
+
+        JSONArray labels = cardJson.optJSONArray("labels");
+
+        if (labels == null) {
+            return "-"; // padrão
+        }
+
+        for (int i = 0; i < labels.length(); i++) {
+
+            JSONObject label = labels.getJSONObject(i);
+
+            String name = label.optString("name", "").toUpperCase();
+
+            switch (name) {
+                case "HIGH":
+                case "MEDIUM":
+                case "LOW":
+                    return name;
+            }
+        }
+
+        return "-"; // padrão caso não encontre
+    }
+
     public ArrayList<Task> getConflictTasks() {
         return conflictTasks;
     }
@@ -294,6 +321,8 @@ public class Task {
         return description;
     }
 
+    public String getPriority() { return priority; }
+
     public String getListId() {
         return idList;
     }
@@ -319,4 +348,6 @@ public class Task {
     public void setiTesk(PlannedTask iTesk) {
         this.iTesk = iTesk;
     }
+
+
 }

@@ -6,3 +6,4 @@ error/
 gradle/
 .gradle/
 USEFUL_LINKS.md
+.env
